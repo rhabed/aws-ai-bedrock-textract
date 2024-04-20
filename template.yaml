@@ -1,0 +1,152 @@
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-bucket-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  BucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt Bucket.Arn
+              - !Sub ${Bucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  TriggetStepFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub Serverless Stack ${AWS::StackName} TriggerTextract TriggetStepTriggerTextract
+      CodeUri: src/trigger_step_function
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        Bucket:
+          Type: S3
+          Properties:
+            Bucket: !Ref Bucket
+            Events:
+              - s3:ObjectCreated:*
+              - s3:ObjectRemoved:*
+      Environment:
+        Variables:
+          STATEMACHINE_STATE_MACHINE_NAME: !GetAtt StateMachine.Name
+          STATEMACHINE_STATE_MACHINE_ARN: !Ref StateMachine
+      Policies:
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt StateMachine.Name
+  TriggetStepFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${TriggetStepFunction}
+  StateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: TriggerTextract
+        States:
+          TriggerTextract:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              Payload.$: $
+              FunctionName: ${TriggerTextract}
+            End: true
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+        - LambdaInvokePolicy:
+            FunctionName: !Ref TriggerTextract
+      Tracing:
+        Enabled: true
+      Type: STANDARD
+      DefinitionSubstitutions:
+        LambdaFunction1: !Ref AWS::NoValue
+        TriggerTextract: !GetAtt TriggerTextract.Arn
+  StateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/vendedlogs/states/${AWS::StackName}-StateMachine-Logs
+  TriggerTextract:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub Stack ${AWS::StackName} Function TriggerTextract
+      CodeUri: src/TriggerTextract
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Role: !GetAtt TextractAccessRole.Arn
+  TriggerTextractLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${TriggerTextract}
+  TextractAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+        - PolicyName: TextractAccessPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - textract:DetectDocumentText
+                  - textract:AnalyzeDocument
+                Resource: '*'
+        - PolicyName: LoggingAccessPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+Transform: AWS::Serverless-2016-10-31

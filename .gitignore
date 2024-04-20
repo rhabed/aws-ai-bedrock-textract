@@ -1,0 +1,4 @@
+.aws-composer/
+.aws-sam/
+.venv/
+.images_test/
