@@ -12,7 +12,7 @@ def handler(event, context):
     formimage = "image.jpg"
     tableimage = "table_image.jpg"
 
-    textractmodule = boto3.client("textract")
+    textractmodule = boto3.client("textract", region_name="ap-southeast-2")
     response = textractmodule.detect_document_text(
         Document={"S3Object": {"Bucket": s3BucketName, "Name": plaintextimage}}
     )

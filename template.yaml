@@ -131,6 +131,13 @@ Resources:
                   - textract:DetectDocumentText
                   - textract:AnalyzeDocument
                 Resource: '*'
+        - PolicyName: SeAccessPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource: arn:aws:s3:::*
         - PolicyName: LoggingAccessPolicy
           PolicyDocument:
             Statement:
