@@ -39,6 +39,58 @@ def extract_text_from_image(event):
         return {"error": str(e)}
 
 
+
+def summarize_text(text):
+    """
+    Summarizes the given text.
+
+    Args:
+        text (str): The text to summarize.
+
+    Returns:
+        str: The summarized text.
+    """
+    try:
+        bedrock = boto3.client('bedrock-runtime')
+
+
+        # Invoke the agent with a prompt
+        prompt = f"Write a summary of the text provided: {text}"
+        body = json.dumps({
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "maxTokenCount": 4096,
+                "stopSequences": [],
+                "temperature": 0,
+                "topP": 1
+            }
+        })
+
+        modelId = 'amazon.titan-text-express-v1'
+        accept = 'application/json'
+        contentType = 'application/json'
+
+        response = bedrock.invoke_model(body=body, modelId=modelId, accept=accept, contentType=contentType)
+        response_body = json.loads(response.get('body').read())
+        finish_reason = response_body.get("error")
+
+        if finish_reason is not None:
+            raise Exception(f"Text generation error. Error is {finish_reason}")
+
+        LOGGER.info(
+            "Successfully generated text with Amazon &titan-text-express; model %s", modelId)
+        
+        
+        for result in response_body['results']:
+            LOGGER.info(f"Token count: {result['tokenCount']}")
+            LOGGER.info(f"Output text: {result['outputText']}")
+            LOGGER.info(f"Completion reason: {result['completionReason']}")
+
+    except Exception as e:
+        LOGGER.error("Error summarizing text: " + str(e))
+        return "Error summarizing text: " + str(e)
+
+
 def handler(event, context):
     """
     Triggers a step function execution.
@@ -53,8 +105,9 @@ def handler(event, context):
     # Log the event argument for debugging and for use in local development.
 
     LOGGER.info(json.dumps(event))
-    extract_text_from_image(event)
-
+    response = extract_text_from_image(event)
+    summarize_text(response["text"])
+    return {"statusCode": 200, "message": "Success"}
     # response = textractmodule.detect_document_text(
     #     Document={"S3Object": {"Bucket": s3BucketName, "Name": fileName}}
     # )

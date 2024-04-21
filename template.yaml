@@ -129,6 +129,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - textract:*
+                  - bedrock:*
                 Resource: '*'
         - PolicyName: SeAccessPolicy
           PolicyDocument:
