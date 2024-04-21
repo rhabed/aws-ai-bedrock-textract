@@ -1,1 +1,13 @@
 # Under Development - Code not complete
+
+
+# Build
+sam build
+
+
+# Deploy
+sam deploy --stack-name <stack_name>  --force-upload  --no-confirm-changeset 
+
+
+# Run data extraction from S3 bucket
+aws s3 cp .images_test/test.png s3://textract-bucket-123456789012}
