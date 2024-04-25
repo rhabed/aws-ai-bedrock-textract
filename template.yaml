@@ -70,6 +70,13 @@ Resources:
             Parameters:
               Payload.$: $
               FunctionName: ${TriggerTextract}
+            Next: ProcessText
+          ProcessText:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              Payload.$: $
+              FunctionName: ${ProcessText}
             End: true
       Logging:
         Level: ALL
@@ -93,12 +100,15 @@ Resources:
               Resource: '*'
         - LambdaInvokePolicy:
             FunctionName: !Ref TriggerTextract
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessText
       Tracing:
         Enabled: true
       Type: STANDARD
       DefinitionSubstitutions:
         LambdaFunction1: !Ref AWS::NoValue
         TriggerTextract: !GetAtt TriggerTextract.Arn
+        ProcessText: !GetAtt ProcessText.Arn
   StateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -119,6 +129,22 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${TriggerTextract}
+  ProcessText:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub Stack ${AWS::StackName} Function ProcessText
+      CodeUri: src/process_text
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Role: !GetAtt TextractAccessRole.Arn
+  ProcessTextLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProcessText}
   TextractAccessRole:
     Type: AWS::IAM::Role
     Properties:

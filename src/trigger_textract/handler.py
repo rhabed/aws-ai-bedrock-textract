@@ -108,19 +108,4 @@ def handler(event, context):
     response = extract_text_from_image(event)
     summarize_text(response["text"])
     return {"statusCode": 200, "message": "Success"}
-    # response = textractmodule.detect_document_text(
-    #     Document={"S3Object": {"Bucket": s3BucketName, "Name": fileName}}
-    # )
-    # print(
-    #     "------------- Print plaintextimage detected text ------------------------------"
-    # )
-    # for item in response["Blocks"]:
-    #     if item["BlockType"] == "LINE":
-    #         print(item["Text"])
 
-    # response_job = textractmodule.start_document_analysis(
-    #     FeatureTypes=["TABLES", "FORMS"],
-    #     DocumentLocation={"S3Object": {"Bucket": s3BucketName, "Name": fileName}},
-    # )
-
-    # print(response_job)
