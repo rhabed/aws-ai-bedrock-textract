@@ -1,0 +1,23 @@
+# .pre-commit-config.yaml
+repos:
+-   repo: https://github.com/awslabs/cfn-python-lint
+    rev: v0.86.4 # The version of cfn-lint to use
+    hooks:
+    -   id: cfn-python-lint
+        files: templates/.*\.(json|yml|yaml)$
+-   repo: https://github.com/psf/black
+    rev: 24.4.1
+    hooks:
+    - id: black
+      language_version: python3.12
+-   repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+    - id: flake8
+      args: ["-j8", "--ignore=E203,E501,P103"]
+
+- repo: https://github.com/PyCQA/isort
+  rev: 5.13.2
+  hooks:
+  - id: isort
+    args: ["--profile", "black"] # solves conflicts between black and isort    

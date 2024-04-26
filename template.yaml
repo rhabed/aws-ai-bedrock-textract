@@ -38,6 +38,8 @@ Resources:
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
+      Layers:
+        - !Ref PopplerLayer
       Events:
         Bucket:
           Type: S3
@@ -46,6 +48,13 @@ Resources:
             Events:
               - s3:ObjectCreated:*
               - s3:ObjectRemoved:*
+            Filter:
+              S3Key:
+                Rules:
+                - Name: prefix
+                  Value: upload
+                - Name: suffix
+                  Value: .pdf 
       Environment:
         Variables:
           STATEMACHINE_STATE_MACHINE_NAME: !GetAtt StateMachine.Name
@@ -53,6 +62,21 @@ Resources:
       Policies:
         - StepFunctionsExecutionPolicy:
             StateMachineName: !GetAtt StateMachine.Name
+        - AWSXrayWriteOnlyAccess
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:*
+              Resource: '*'
+  PopplerLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: vendor/lib/poppler.zip
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
   TriggetStepFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
