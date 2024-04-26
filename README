@@ -2,12 +2,18 @@
 
 
 # Build
-sam build
+
+`sam build`
 
 
 # Deploy
-sam deploy --stack-name <stack_name>  --force-upload  --no-confirm-changeset 
+
+`sam deploy --stack-name <stack_name>  --force-upload  --no-confirm-changeset`
 
 
 # Run data extraction from S3 bucket
-aws s3 cp .images_test/test.png s3://textract-bucket-123456789012}
+
+- vupload the document to the `upload` folder
+- replace 123456789012 by your aws account numnber or fix the s3 bucket name
+
+`aws s3 cp .images_test/test.png s3://textract-bucket-123456789012/upload/`
