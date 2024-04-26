@@ -38,6 +38,8 @@ Resources:
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
+      Layers:
+        - !Ref PopplerLayer
       Events:
         Bucket:
           Type: S3
@@ -46,6 +48,13 @@ Resources:
             Events:
               - s3:ObjectCreated:*
               - s3:ObjectRemoved:*
+            Filter:
+              S3Key:
+                Rules:
+                - Name: prefix
+                  Value: upload
+                - Name: suffix
+                  Value: .pdf 
       Environment:
         Variables:
           STATEMACHINE_STATE_MACHINE_NAME: !GetAtt StateMachine.Name
@@ -53,6 +62,21 @@ Resources:
       Policies:
         - StepFunctionsExecutionPolicy:
             StateMachineName: !GetAtt StateMachine.Name
+        - AWSXrayWriteOnlyAccess
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:*
+              Resource: '*'
+  PopplerLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: vendor/lib/poppler.zip
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
   TriggetStepFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -70,6 +94,13 @@ Resources:
             Parameters:
               Payload.$: $
               FunctionName: ${TriggerTextract}
+            Next: ProcessText
+          ProcessText:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              Payload.$: $
+              FunctionName: ${ProcessText}
             End: true
       Logging:
         Level: ALL
@@ -93,12 +124,15 @@ Resources:
               Resource: '*'
         - LambdaInvokePolicy:
             FunctionName: !Ref TriggerTextract
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessText
       Tracing:
         Enabled: true
       Type: STANDARD
       DefinitionSubstitutions:
         LambdaFunction1: !Ref AWS::NoValue
         TriggerTextract: !GetAtt TriggerTextract.Arn
+        ProcessText: !GetAtt ProcessText.Arn
   StateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -119,6 +153,22 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${TriggerTextract}
+  ProcessText:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub Stack ${AWS::StackName} Function ProcessText
+      CodeUri: src/process_text
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Role: !GetAtt TextractAccessRole.Arn
+  ProcessTextLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProcessText}
   TextractAccessRole:
     Type: AWS::IAM::Role
     Properties:
