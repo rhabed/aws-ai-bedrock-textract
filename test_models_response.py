@@ -15,14 +15,14 @@ MODEL_ID = os.getenv("MODEL_ID")
 def converse_with_model(model_id, text, type):
     try:
         client = boto3.client("bedrock-runtime")
-        messages = [{"role": type, "content": [{"text": text}]}]
-        breakpoint()
+        messages = []
+        messages.append({"role": type, "content": [{"text": text}]})
         response = client.converse(
             modelId=model_id,
             messages=messages,
         )
 
-        LOGGER.info(response)
+        LOGGER.info(response["output"]["message"]["content"][0]["text"])
 
     except Exception as e:
         LOGGER.error("Error: " + str(e))
