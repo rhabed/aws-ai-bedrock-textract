@@ -2,3 +2,5 @@
 .aws-sam/
 .venv/
 .images_test/
+*/__pycache__/
+*/*/__pycache__/
